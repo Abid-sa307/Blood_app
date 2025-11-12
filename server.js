@@ -18,35 +18,27 @@ const DONATION_COOLDOWN_DAYS = parseInt(process.env.DONATION_COOLDOWN_DAYS || "9
 const PORT_BASE = process.env.PORT || 3000;
 
 // Database configuration
-let pool;
+const { Pool } = require('pg');
 
-// Initialize database connection
+// Create a single, reusable connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+// Test the connection and initialize the database
 async function initDatabase() {
+  const client = await pool.connect();
   try {
-    const dbUrl = process.env.DATABASE_URL;
-    
-    if (!dbUrl) {
-      throw new Error('DATABASE_URL environment variable is not set');
-    }
-
-    // Create connection pool
-    pool = new Pool({
-      connectionString: dbUrl,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-    });
-
-    // Test the connection
-    const client = await pool.connect();
     console.log('Successfully connected to PostgreSQL database');
-    await client.release();
-    
-    // Initialize database schema
-    await ensureSchema();
-    return pool;
+    await ensureSchema(client);
   } catch (error) {
     console.error('Database initialization error:', error);
     process.exit(1);
+  } finally {
+    client.release();
   }
+  return pool;
 }
 
 // ── Middleware ──────────────────────────────────────────────────────────────────
@@ -117,8 +109,7 @@ function parseAvailableFlag(v) {
 }
 
 // ── DB init & schema ────────────────────────────────────────────────────────────
-async function ensureSchema() {
-  const client = await pool.connect();
+async function ensureSchema(client) {
   try {
     // Create tables if they don't exist
     await client.query(`
@@ -143,8 +134,6 @@ async function ensureSchema() {
   } catch (error) {
     console.error('Error setting up database schema:', error);
     throw error;
-  } finally {
-    client.release();
   }
 
 }
