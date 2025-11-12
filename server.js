@@ -2,7 +2,7 @@
 
 require('dotenv').config();
 const express = require("express");
-const mysql = require("mysql2/promise");
+const { Pool } = require('pg');
 const path = require("path");
 
 // Optional Excel export (fallback to CSV if not installed)
@@ -17,13 +17,11 @@ const BLOOD_GROUPS = ["A+","A-","B+","B-","AB+","AB-","O+","O-"];
 const DONATION_COOLDOWN_DAYS = parseInt(process.env.DONATION_COOLDOWN_DAYS || "90", 10);
 const PORT_BASE = process.env.PORT || 3000;
 
-const MYSQL_HOST = process.env.MYSQL_HOST || "localhost";
-const MYSQL_PORT = Number(process.env.MYSQL_PORT || 3306);
-const MYSQL_USER = process.env.MYSQL_USER || "root";
-const MYSQL_PASSWORD = process.env.MYSQL_PASSWORD || "";
-const MYSQL_DB = process.env.MYSQL_DB || "blood_app";
-
-let pool;
+// Database configuration
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/blood_app',
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 // ── Middleware ──────────────────────────────────────────────────────────────────
 app.use(express.json());
@@ -94,60 +92,33 @@ function parseAvailableFlag(v) {
 
 // ── DB init & schema ────────────────────────────────────────────────────────────
 async function ensureSchema() {
-  const dbConfig = {
-    host: process.env.MYSQL_HOST || MYSQL_HOST,
-    port: process.env.MYSQL_PORT || MYSQL_PORT,
-    user: process.env.MYSQL_USER || MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD || MYSQL_PASSWORD,
-    database: process.env.MYSQL_DB || MYSQL_DB,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    multipleStatements: true
-  };
-
   try {
-    // First, try to connect to the database directly
-    pool = mysql.createPool(dbConfig);
-    
     // Test the connection
     await pool.query('SELECT 1');
-    console.log('Connected to existing database');
+    console.log('Connected to database');
   } catch (error) {
-    console.log('Creating database and tables...');
-    // If connection fails, try to create the database
-    try {
-      const tempConfig = { ...dbConfig };
-      delete tempConfig.database; // Remove database name to connect to server
-      
-      const serverConn = await mysql.createConnection(tempConfig);
-      await serverConn.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\` DEFAULT CHARACTER SET utf8mb4`);
-      await serverConn.end();
-
-      // Now create the pool with the database
-      pool = mysql.createPool(dbConfig);
-    } catch (createError) {
-      console.error('Failed to create database:', createError);
-      throw createError;
-    }
+    console.error('Failed to connect to database:', error);
+    throw error;
   }
 
   // Create tables
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
-      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      id SERIAL PRIMARY KEY,
       name VARCHAR(128) NOT NULL,
       contact VARCHAR(32) NOT NULL,
-      blood_group ENUM('A+','A-','B+','B-','AB+','AB-','O+','O-') NOT NULL,
-      last_donation_date DATE NULL,
-      available TINYINT(1) NOT NULL DEFAULT 1,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (id),
-      INDEX idx_bg (blood_group),
-      INDEX idx_available (available),
-      INDEX idx_created (created_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      blood_group VARCHAR(3) NOT NULL CHECK (blood_group IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')),
+      last_donation_date DATE,
+      available BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(contact)
+    );
   `);
+
+  // Create indexes
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_bg ON users(blood_group)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_available ON users(available)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_created ON users(created_at)');
 
   try { await pool.query("ALTER TABLE users ADD COLUMN last_donation_date DATE NULL AFTER blood_group"); }
   catch (e) { if (!e || e.code !== "ER_DUP_FIELDNAME") throw e; }
