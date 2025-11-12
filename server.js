@@ -15,12 +15,8 @@ const app = express();
 const APP_NAME = "Syed Samaj Palanpur Blood Group Data";
 const BLOOD_GROUPS = ["A+","A-","B+","B-","AB+","AB-","O+","O-"];
 const DONATION_COOLDOWN_DAYS = parseInt(process.env.DONATION_COOLDOWN_DAYS || "90", 10);
-const PORT_BASE = process.env.PORT || 3000;
 
 // Database configuration
-const { Pool } = require('pg');
-
-// Create a single, reusable connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
@@ -382,28 +378,26 @@ app.get("/api/export/users", async (req, res) => {
 // Health
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-// ── Start (port fallback) ───────────────────────────────────────────────────────
-function listenWithFallback(app, startPort = 3000, maxAttempts = 10) {
-  return new Promise((resolve, reject) => {
-    let port = startPort, attempts = 0;
-    const tryListen = () => {
-      const server = app.listen(port, () => resolve({ server, port }));
-      server.on("error", (err) => {
-        if (err.code === "EADDRINUSE" && attempts < maxAttempts) { attempts++; port++; tryListen(); }
-        else reject(err);
-      });
-    };
-    tryListen();
-  });
+// ── Start server ────────────────────────────────────────────────────────────────
+async function startServer() {
+  try {
+    // Initialize database
+    await initDatabase();
+    
+    // Start the server
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+      console.log(`${APP_NAME} running on port ${PORT}`);
+      console.log(`Connected to PostgreSQL database`);
+      console.log(`Donation cooldown = ${DONATION_COOLDOWN_DAYS} days`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
 }
 
-ensureSchema()
-  .then(async () => {
-    const { port } = await listenWithFallback(app, PORT_BASE);
-    console.log(`Server running at http://localhost:${port}`);
-    console.log(`MySQL → ${MYSQL_USER}@${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DB}`);
-    console.log(`Donation cooldown = ${DONATION_COOLDOWN_DAYS} days`);
-  })
-  .catch((err) => { console.error("MySQL init failed:", err); process.exit(1); });
+// Start the application
+startServer();
 
 process.on("SIGINT", async () => { try { if (pool) await pool.end(); } catch {} process.exit(0); });
