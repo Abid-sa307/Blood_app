@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: blood-donor-directory
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+
+databases:
+  - name: blood-db
+    databaseName: blood_app
+    user: blood_user

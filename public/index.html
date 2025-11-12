@@ -1,0 +1,492 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Syed Samaj Palanpur Blood Group Data</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --gap: 16px; --radius: 14px; --primary:#1d4ed8; --bg:#f6f7fb; --text:#111; --muted:#667085; }
+    * { box-sizing: border-box; }
+    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 0; background: var(--bg); color: var(--text); }
+    header { padding: 22px 18px; color: #fff; background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
+    h1 { margin: 0; font-weight: 800; letter-spacing: 0.2px; font-size: clamp(18px, 4vw, 28px); }
+    main { padding: 18px; max-width: 1200px; margin: 0 auto; }
+    .grid { display: grid; gap: var(--gap); }
+    .two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: var(--radius); padding: 16px; box-shadow: 0 1px 2px rgba(16,24,40,0.06); }
+
+    label { font-size: 14px; color: #344054; display: block; margin-bottom: 6px; }
+    input, select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d0d5dd; background: #fff; font-size: 14px; }
+    input:invalid, select:invalid { border-color: #ef4444; }
+    button { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--primary); background: var(--primary); color: #fff; font-weight: 700; cursor: pointer; }
+    button.ghost { background: #fff; color: var(--primary); border-color: var(--primary); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { font-size: 14px; border-bottom: 1px solid #eef2f7; padding: 10px 8px; text-align: left; white-space: nowrap; }
+
+    .kpi { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: var(--gap); }
+    .kpi .item { padding: 16px; border-radius: 14px; background: #f8fafc; border: 1px solid #e5e7eb; }
+    .kpi .item.available { background:#e8fff3; border-color:#abefc6; }
+    .kpi .item.unavailable { background:#fff1f0; border-color:#fda29b; }
+    .kpi .item.cooldown { background:#eff6ff; border-color:#bfdbfe; }
+    .kpi .item h4 { margin: 0; font-size: 13px; color: var(--muted); }
+    .kpi .item .num { font-size: 24px; font-weight: 800; margin-top: 6px; }
+
+    .muted { color: var(--muted); font-size: 13px; }
+
+    .badge, .chip { padding: 4px 10px; border-radius: 999px; font-weight: 700; font-size: 12px; display: inline-block; }
+    .badge.ok, .chip.ok { background: #e8fff3; color: #067647; border: 1px solid #abefc6; }  /* GREEN */
+    .badge.no, .chip.no { background: #fff1f0; color: #b42318; border: 1px solid #fda29b; } /* RED */
+    .row-available { background: #e8fff3; }   /* full-row green */
+    .row-unavailable { background: #fff1f0; } /* full-row red */
+
+    /* Blood-group mini tiles */
+    .group-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-top:8px; }
+    .tile { padding:12px; border-radius:12px; border:1px solid #e5e7eb; text-align:center; }
+    .tile h5 { margin:0 0 6px 0; font-size:13px; color:#344054; }
+    .tile .num { font-weight:800; font-size:20px; }
+    .tile-green { background:#e8fff3; border-color:#abefc6; color:#067647; }
+    .tile-red { background:#fff1f0; border-color:#fda29b; color:#b42318; }
+
+    /* ====== Mobile responsiveness ====== */
+    @media (max-width: 980px) {
+      .two, .three, .kpi { grid-template-columns: 1fr; }
+      .group-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 640px) {
+      main { padding: 14px; }
+      .group-grid { grid-template-columns: repeat(2, 1fr); }
+      .kpi { grid-template-columns: 1fr 1fr; }
+      /* Make table become card list */
+      table.responsive { border: 0; }
+      table.responsive thead { display: none; }
+      table.responsive tbody tr { display: block; margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+      table.responsive tbody tr td { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px dashed #eef2f7; white-space: normal; }
+      table.responsive tbody tr td:last-child { border-bottom: 0; }
+      table.responsive tbody tr td::before { content: attr(data-label); font-weight: 700; color: #344054; }
+      /* keep row color backgrounds */
+      .row-available { background:#e8fff3; }
+      .row-unavailable { background:#fff1f0; }
+      /* action buttons full width on tiny screens */
+      .actions { width: 100%; justify-content: flex-end; }
+    }
+
+    /* Modal */
+    .modal { position: fixed; inset: 0; background: rgba(2,6,23,0.6); display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal.open { display: flex; }
+    .modal .panel { width: 520px; max-width: 100%; background: #fff; border-radius: 16px; padding: 18px; border: 1px solid #e5e7eb; box-shadow: 0 10px 40px rgba(2,6,23,0.4); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .row + .row { margin-top: 10px; }
+    .headerline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+
+    @media (max-width: 520px) {
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Syed Samaj Palanpur Blood Group Data</h1>
+    <div class="muted">All fields required • Last donation within 2 years</div>
+  </header>
+
+  <main class="grid two">
+    <!-- Form -->
+    <section class="card">
+      <h3>Add User</h3>
+      <div class="grid">
+        <div>
+          <label for="name">Name</label>
+          <input id="name" placeholder="e.g. Mukeshbhai" required />
+        </div>
+        <div>
+          <label for="contact">Contact Number</label>
+          <input id="contact" placeholder="+91 98xxxxxxx" required />
+        </div>
+        <div>
+          <label for="blood">Blood Group</label>
+          <select id="blood" required></select>
+        </div>
+        <div>
+          <label for="eligible">Eligible to Donate</label>
+          <select id="eligible" required>
+            <option value="" disabled selected>Select…</option>
+            <option value="1">Yes</option>
+            <option value="0">No</option>
+          </select>
+        </div>
+        <div>
+          <label for="lastDonation">Last Donation (required)</label>
+          <input id="lastDonation" type="date" required />
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="submitBtn">Submit</button>
+        </div>
+        <p id="msg" class="muted"></p>
+      </div>
+    </section>
+
+    <!-- Dashboard -->
+    <section class="card">
+      <h3>Dashboard</h3>
+      <div class="kpi" id="kpiWrap">
+        <div class="item"><h4>Total Users</h4><div class="num" id="kpiTotal">0</div></div>
+        <div class="item available"><h4>Available Now</h4><div class="num" id="kpiAvail">0</div></div>
+        <div class="item unavailable"><h4>Not available</h4><div class="num" id="kpiUnavail">0</div></div>
+        <div class="item cooldown"><h4>Cooldown (days)</h4><div class="num" id="kpiCooldown">90</div></div>
+      </div>
+
+      <div style="margin-top: 12px;">
+        <div class="muted">Available donors by blood group</div>
+        <div id="availByGroup" class="group-grid"></div>
+      </div>
+
+      <div style="margin-top: 18px;">
+        <div class="muted">Total users by blood group</div>
+        <div id="totalsByGroup" class="group-grid"></div>
+      </div>
+    </section>
+
+    <!-- Report + Filters -->
+    <section class="card" style="grid-column: 1 / -1;">
+      <div class="grid three" style="align-items: end;">
+        <div>
+          <label for="filterBlood">Filter: Blood Group</label>
+          <select id="filterBlood"></select>
+        </div>
+        <div>
+          <label for="filterAvail">Filter: Availability</label>
+          <select id="filterAvail">
+            <option value="">All</option>
+            <option value="available">Available</option>
+            <option value="unavailable">Not available</option>
+          </select>
+        </div>
+        <div class="actions">
+          <button id="runFilter">Run Report</button>
+          <button id="resetFilter" class="ghost">Reset</button>
+          <button id="downloadExcel" class="ghost">Download Excel</button>
+        </div>
+      </div>
+
+      <div style="margin-top: 14px; overflow: auto;">
+        <table class="responsive">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Contact</th>
+              <th>Blood</th>
+              <th>Last Donation</th>
+              <th>Next Eligible</th>
+              <th>Availability</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="reportBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Edit Modal -->
+  <div class="modal" id="editModal">
+    <div class="panel">
+      <div class="headerline">
+        <h3>Edit User</h3>
+        <button class="ghost" id="closeModal">Close</button>
+      </div>
+      <div class="row">
+        <div>
+          <label>Name</label>
+          <input id="editName" required />
+        </div>
+        <div>
+          <label>Contact</label>
+          <input id="editContact" required />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Blood Group</label>
+          <select id="editBlood" required></select>
+        </div>
+        <div>
+          <label>Eligible to Donate</label>
+          <select id="editEligible" required>
+            <option value="1">Yes</option>
+            <option value="0">No</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Last Donation</label>
+          <input id="editLastDonation" type="date" required />
+        </div>
+      </div>
+      <div style="margin-top: 12px; display:flex; gap:10px;">
+        <button id="saveEdit">Save</button>
+        <button class="ghost" id="cancelEdit">Cancel</button>
+        <div class="muted" id="editMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BLOOD_GROUPS = ["A+","A-","B+","B-","AB+","AB-","O+","O-"];
+    const $ = (id) => document.getElementById(id);
+
+    const nameEl = $("name"), contactEl = $("contact"), bloodEl = $("blood"),
+          eligibleEl = $("eligible"), lastDonationEl = $("lastDonation"), msgEl = $("msg");
+
+    const kpiTotal = $("kpiTotal"), kpiAvail = $("kpiAvail"), kpiUnavail = $("kpiUnavail"), kpiCooldown = $("kpiCooldown");
+    const availByGroup = $("availByGroup"), totalsByGroup = $("totalsByGroup");
+    const filterBloodEl = $("filterBlood"), filterAvailEl = $("filterAvail");
+    const runFilterBtn = $("runFilter"), resetFilterBtn = $("resetFilter"), reportBodyEl = $("reportBody");
+    const downloadExcelBtn = $("downloadExcel");
+
+    // Modal refs
+    const editModal = $("editModal"), saveEditBtn = $("saveEdit");
+    const editName = $("editName"), editContact = $("editContact"), editBlood = $("editBlood"),
+          editEligible = $("editEligible"), editLastDonation = $("editLastDonation"), editMsg = $("editMsg");
+    let editingId = null;
+
+    function populateBGSelects() {
+      BLOOD_GROUPS.forEach(g => {
+        const o = document.createElement("option"); o.value = g; o.textContent = g; bloodEl.appendChild(o);
+        const o2 = document.createElement("option"); o2.value = g; o2.textContent = g; editBlood.appendChild(o2);
+        const o3 = document.createElement("option"); o3.value = g; o3.textContent = g; filterBloodEl.appendChild(o3);
+      });
+      const all = document.createElement("option"); all.value = ""; all.textContent = "All Groups"; filterBloodEl.prepend(all);
+      filterBloodEl.selectedIndex = 0; // default All Groups
+      filterAvailEl.value = "";        // default All
+    }
+
+    // Date bounds (today back to 2 years)
+    function computeDateBounds() {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const max = today.toISOString().slice(0,10);
+      const minD = new Date(today); minD.setFullYear(minD.getFullYear() - 2);
+      const min = minD.toISOString().slice(0,10);
+      return { min, max };
+    }
+    function applyDateBounds(inputEl) {
+      const { min, max } = computeDateBounds();
+      inputEl.setAttribute("min", min);
+      inputEl.setAttribute("max", max);
+    }
+
+    function openModal(row) {
+      editingId = row.id;
+      editName.value = row.name;
+      editContact.value = row.contact;
+      editBlood.value = row.blood_group;
+      editEligible.value = row.available ? "1" : "0";
+      editLastDonation.value = row.last_donation_date || "";
+      editMsg.textContent = "";
+      applyDateBounds(editLastDonation);
+      document.getElementById("editModal").classList.add("open");
+    }
+    function closeModal() { editingId = null; document.getElementById("editModal").classList.remove("open"); }
+    document.getElementById("closeModal").onclick = closeModal;
+    document.getElementById("cancelEdit").onclick = closeModal;
+
+    async function fetchDashboard() {
+      const r = await fetch("/api/dashboard");
+      const d = await r.json(); if (!d.ok) return;
+      kpiTotal.textContent = d.totalUsers ?? 0;
+      kpiAvail.textContent = d.availableUsers ?? 0;
+      kpiUnavail.textContent = d.unavailableUsers ?? 0;
+      kpiCooldown.textContent = d.cooldownDays ?? 90;
+
+      // AVAILABLE donors by group: tile turns green if >0 else red
+      availByGroup.innerHTML = "";
+      d.groups.forEach(g => {
+        const c = d.availableByGroup[g] || 0;
+        const tile = document.createElement("div");
+        tile.className = "tile " + (c > 0 ? "tile-green" : "tile-red");
+        tile.innerHTML = `<h5>${g}</h5><div class="num">${c}</div>`;
+        availByGroup.appendChild(tile);
+      });
+
+      // TOTAL users by group: green if any users, red if none
+      totalsByGroup.innerHTML = "";
+      d.groups.forEach(g => {
+        const t = d.byGroup[g] || 0;
+        const tile = document.createElement("div");
+        tile.className = "tile " + (t > 0 ? "tile-green" : "tile-red");
+        tile.innerHTML = `<h5>${g}</h5><div class="num">${t}</div>`;
+        totalsByGroup.appendChild(tile);
+      });
+    }
+
+    function fmtDate(iso) { return iso ? new Date(iso).toLocaleDateString("en-GB") : "—"; }
+
+    function td(label, html) { return `<td data-label="${label}">${html}</td>`; }
+
+    async function runReport() {
+      const bg = filterBloodEl.value;
+      const av = filterAvailEl.value;
+      const qs = new URLSearchParams();
+      if (bg) qs.set("bloodGroup", bg);
+      if (av) qs.set("availability", av);
+
+      const r = await fetch("/api/users?" + qs.toString());
+      const data = await r.json();
+      reportBodyEl.innerHTML = "";
+      if (data.ok && Array.isArray(data.data)) {
+        data.data.forEach((row, i) => {
+          const badge = row.available ? '<span class="badge ok">Available</span>' : '<span class="badge no">Not available</span>';
+          const bloodChip = row.available ? `<span class="chip ok">${row.blood_group}</span>` : `<span class="chip no">${row.blood_group}</span>`;
+          const tr = document.createElement("tr");
+          tr.className = row.available ? "row-available" : "row-unavailable";
+          tr.innerHTML =
+            td("#", i + 1) +
+            td("Name", row.name) +
+            td("Contact", row.contact) +
+            td("Blood", bloodChip) +
+            td("Last Donation", fmtDate(row.last_donation_date)) +
+            td("Next Eligible", fmtDate(row.next_eligible_date)) +
+            td("Availability", badge) +
+            td("Created", new Date(row.created_at).toLocaleString()) +
+            td("Actions", `<button class="ghost" data-id="${row.id}" data-row='${JSON.stringify(row).replace(/'/g,"&apos;")}'>Edit</button>`);
+          reportBodyEl.appendChild(tr);
+        });
+
+        reportBodyEl.querySelectorAll("button[data-id]").forEach(btn => {
+          btn.addEventListener("click", (e) => {
+            const row = JSON.parse(e.currentTarget.getAttribute("data-row").replace(/&apos;/g,"'"));
+            openModal(row);
+          });
+        });
+      }
+    }
+
+    function requiredMsg(el, name) { return el.value ? "" : `${name} is required.`; }
+
+    async function submitForm() {
+      msgEl.textContent = "";
+
+      const errs = [
+        requiredMsg(nameEl, "Name"),
+        requiredMsg(contactEl, "Contact"),
+        requiredMsg(bloodEl, "Blood group"),
+        requiredMsg(eligibleEl, "Eligible to donate"),
+        requiredMsg(lastDonationEl, "Last donation date"),
+      ].filter(Boolean);
+      if (errs.length) { msgEl.textContent = errs[0]; return; }
+
+      const { min, max } = computeDateBounds();
+      if (lastDonationEl.value < min || lastDonationEl.value > max) {
+        msgEl.textContent = `Last donation must be between ${min} and ${max}.`;
+        return;
+      }
+
+      const payload = {
+        name: nameEl.value.trim(),
+        contactNumber: contactEl.value.trim(),
+        bloodGroup: bloodEl.value,
+        available: eligibleEl.value,
+        lastDonationDate: lastDonationEl.value
+      };
+
+      const btn = $("submitBtn"); btn.disabled = true;
+      try {
+        const r = await fetch("/api/users", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await r.json();
+        if (!data.ok) msgEl.textContent = data.error || "Something went wrong.";
+        else {
+          msgEl.textContent = "Saved!";
+          nameEl.value = ""; contactEl.value = ""; bloodEl.value = ""; eligibleEl.value = ""; lastDonationEl.value = "";
+          await fetchDashboard(); await runReport();
+          setTimeout(() => msgEl.textContent = "", 1500);
+        }
+      } catch { msgEl.textContent = "Network error."; }
+      finally { btn.disabled = false; }
+    }
+
+    async function saveEdit() {
+      if (!editingId) return;
+      editMsg.textContent = "";
+
+      if (!editName.value.trim()) { editMsg.textContent = "Name is required."; return; }
+      if (!editContact.value.trim()) { editMsg.textContent = "Contact is required."; return; }
+      if (!editBlood.value) { editMsg.textContent = "Blood group is required."; return; }
+      if (editEligible.value === "") { editMsg.textContent = "Eligible is required."; return; }
+      if (!editLastDonation.value) { editMsg.textContent = "Last donation date is required."; return; }
+
+      const { min, max } = computeDateBounds();
+      if (editLastDonation.value < min || editLastDonation.value > max) {
+        editMsg.textContent = `Last donation must be between ${min} and ${max}.`;
+        return;
+      }
+
+      const payload = {
+        name: editName.value.trim(),
+        contactNumber: editContact.value.trim(),
+        bloodGroup: editBlood.value,
+        available: editEligible.value,
+        lastDonationDate: editLastDonation.value
+      };
+
+      saveEditBtn.disabled = true;
+      try {
+        const r = await fetch("/api/users/" + editingId, {
+          method: "PUT", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await r.json();
+        if (!data.ok) editMsg.textContent = data.error || "Update failed.";
+        else {
+          closeModal();
+          await fetchDashboard(); await runReport();
+        }
+      } catch { editMsg.textContent = "Network error."; }
+      finally { saveEditBtn.disabled = false; }
+    }
+
+    // Excel / CSV download
+    downloadExcelBtn.addEventListener("click", async () => {
+      const bg = filterBloodEl.value;
+      const av = filterAvailEl.value;
+      const qs = new URLSearchParams();
+      if (bg) qs.set("bloodGroup", bg);
+      if (av) qs.set("availability", av);
+
+      const r = await fetch("/api/export/users?" + qs.toString());
+      if (!r.ok) { alert("Export failed"); return; }
+      const ct = (r.headers.get("content-type") || "").toLowerCase();
+      const ext = ct.includes("spreadsheetml") ? "xlsx" : "csv";
+
+      const blob = await r.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `syed_samaj_palanpur_blood_group_data.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+
+    document.getElementById("submitBtn").addEventListener("click", submitForm);
+    runFilterBtn.addEventListener("click", runReport);
+    resetFilterBtn.addEventListener("click", () => { filterBloodEl.value=""; filterAvailEl.value=""; runReport(); });
+    document.getElementById("saveEdit").addEventListener("click", saveEdit);
+
+    // init
+    populateBGSelects();
+    applyDateBounds(lastDonationEl);
+    fetchDashboard();
+    runReport();
+  </script>
+</body>
+</html>
