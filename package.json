@@ -4,8 +4,9 @@
   "description": "Simple Node app for collecting users with blood groups + dashboard",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "NODE_ENV=production node server.js",
+    "dev": "nodemon server.js",
+    "heroku-postbuild": "npm install"
   },
   "dependencies": {
     "dotenv": "^17.2.3",

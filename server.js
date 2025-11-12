@@ -1,4 +1,4 @@
-// server.js — Syed Samaj Palanpur Blood Group Data (MySQL)
+// server.js — Syed Samaj Palanpur Blood Group Data (PostgreSQL)
 
 require('dotenv').config();
 const express = require("express");
@@ -18,10 +18,36 @@ const DONATION_COOLDOWN_DAYS = parseInt(process.env.DONATION_COOLDOWN_DAYS || "9
 const PORT_BASE = process.env.PORT || 3000;
 
 // Database configuration
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/blood_app',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+let pool;
+
+// Initialize database connection
+async function initDatabase() {
+  try {
+    const dbUrl = process.env.DATABASE_URL;
+    
+    if (!dbUrl) {
+      throw new Error('DATABASE_URL environment variable is not set');
+    }
+
+    // Create connection pool
+    pool = new Pool({
+      connectionString: dbUrl,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    });
+
+    // Test the connection
+    const client = await pool.connect();
+    console.log('Successfully connected to PostgreSQL database');
+    await client.release();
+    
+    // Initialize database schema
+    await ensureSchema();
+    return pool;
+  } catch (error) {
+    console.error('Database initialization error:', error);
+    process.exit(1);
+  }
+}
 
 // ── Middleware ──────────────────────────────────────────────────────────────────
 app.use(express.json());
@@ -92,38 +118,35 @@ function parseAvailableFlag(v) {
 
 // ── DB init & schema ────────────────────────────────────────────────────────────
 async function ensureSchema() {
+  const client = await pool.connect();
   try {
-    // Test the connection
-    await pool.query('SELECT 1');
-    console.log('Connected to database');
+    // Create tables if they don't exist
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(128) NOT NULL,
+        contact VARCHAR(32) NOT NULL UNIQUE,
+        blood_group VARCHAR(3) NOT NULL 
+          CHECK (blood_group IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')),
+        last_donation_date DATE,
+        available BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create indexes if they don't exist
+    await client.query('CREATE INDEX IF NOT EXISTS idx_bg ON users(blood_group)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_available ON users(available)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_created ON users(created_at)');
+
+    console.log('Database schema is ready');
   } catch (error) {
-    console.error('Failed to connect to database:', error);
+    console.error('Error setting up database schema:', error);
     throw error;
+  } finally {
+    client.release();
   }
 
-  // Create tables
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(128) NOT NULL,
-      contact VARCHAR(32) NOT NULL,
-      blood_group VARCHAR(3) NOT NULL CHECK (blood_group IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')),
-      last_donation_date DATE,
-      available BOOLEAN NOT NULL DEFAULT true,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(contact)
-    );
-  `);
-
-  // Create indexes
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_bg ON users(blood_group)');
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_available ON users(available)');
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_created ON users(created_at)');
-
-  try { await pool.query("ALTER TABLE users ADD COLUMN last_donation_date DATE NULL AFTER blood_group"); }
-  catch (e) { if (!e || e.code !== "ER_DUP_FIELDNAME") throw e; }
-  try { await pool.query("ALTER TABLE users ADD COLUMN available TINYINT(1) NOT NULL DEFAULT 1 AFTER last_donation_date"); }
-  catch (e) { if (!e || e.code !== "ER_DUP_FIELDNAME") throw e; }
 }
 
 // ── Routes ──────────────────────────────────────────────────────────────────────
