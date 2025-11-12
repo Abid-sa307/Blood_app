@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Blood Donor Directory
 
 A web application for managing blood donor information, built with Node.js, Express, and MySQL.
@@ -90,3 +91,6 @@ NODE_ENV=development
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+=======
+# Blood_app
+>>>>>>> 0fb4f14a23e021e90e5685de7a754f464fa8a425
